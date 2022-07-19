@@ -37,15 +37,14 @@ fn fill_from_str(bytes: &mut [u8], s: &str) {
     }
 }
 
-fn process_serial_msg(buf: &MessageBuffer, buff_size: usize) -> (MessageBuffer, usize) {
+fn process_serial_msg(buf: &mut MessageBuffer, buff_size: usize) -> usize {
     match buf {
         [b'a', b'b', ..] => {
             let text = "ayy, bee!\n";
-            let mut new_buf = [0u8; 256];
-            fill_from_str(&mut new_buf, text);
-            (new_buf, text.bytes().len())
+            fill_from_str(buf, text);
+            text.bytes().len()
         }
-        _ => (*buf, buff_size),
+        _ => buff_size,
     }
 }
 
@@ -92,7 +91,7 @@ fn main() -> ! {
 
     let mut serial = SerialPort::new(&usb_bus);
 
-    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
+    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x0745))
         .product("Serial port")
         .device_class(USB_CLASS_CDC)
         .build();
@@ -120,8 +119,8 @@ fn main() -> ! {
 
                     if *byte == b'\r' || *byte == b'\n' {
                         // Process the message, then print out a possible reply
-                        (message_buffer, message_buffer_pos) =
-                            process_serial_msg(&message_buffer, message_buffer_pos);
+                        message_buffer_pos =
+                            process_serial_msg(&mut message_buffer, message_buffer_pos);
                         serial.write(&[b'\r', b'\n']).unwrap();
                         serial.write(&message_buffer[..message_buffer_pos]).unwrap();
                         message_buffer_pos = 0;
